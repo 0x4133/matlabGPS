@@ -1,0 +1,70 @@
+% Clear the command window and close any open serial ports
+clc;
+clear;
+close all;
+delete(serialportfind);
+
+% Specify the serial port settings
+serialPortName = "/dev/tty.usbmodem1101";  % Replace with the appropriate serial port
+baudRate = 9600;                           % Replace with the baud rate of your GPS dongle
+
+try
+    % Create a serialport object
+    serialportObj = serialport(serialPortName, baudRate);
+    
+    % Open the serial port
+    fopen(serialportObj);
+    
+    disp('Serial port opened successfully.');
+    
+    % Read and display GPS data
+    while true
+        % Read a line of data from the serial port
+        gpsData = readline(serialportObj);
+        
+        disp(['Received data: ' gpsData]);
+        
+        % Check if the data is a valid NMEA sentence
+        if startsWith(gpsData, '$') && endsWith(gpsData, '*')
+            % Split the NMEA sentence into fields
+            fields = split(gpsData, ',');
+            
+            % Extract relevant information based on the NMEA sentence type
+            if strcmp(fields{1}, '$GPRMC')
+                latitude = str2double(fields{4});
+                longitude = str2double(fields{6});
+                speed = str2double(fields{8});
+                
+                % Display the extracted information
+                disp(['Latitude: ' num2str(latitude)]);
+                disp(['Longitude: ' num2str(longitude)]);
+                disp(['Speed: ' num2str(speed) ' knots']);
+                disp('---');
+            end
+        else
+            disp('Invalid NMEA sentence received.');
+        end
+        
+        % Check if the user wants to stop reading data
+        if contains(gpsData, 'exit', 'IgnoreCase', true)
+            break;
+        end
+    end
+    
+    % Close the serial port and delete the serialport object
+    fclose(serialportObj);
+    delete(serialportObj);
+    clear serialportObj;
+    
+    disp('Serial port closed successfully.');
+    
+catch err
+    disp(['Error: ' err.message]);
+    
+    % Close the serial port if it was opened
+    if isvalid(serialportObj)
+        fclose(serialportObj);
+        delete(serialportObj);
+        clear serialportObj;
+    end
+end
